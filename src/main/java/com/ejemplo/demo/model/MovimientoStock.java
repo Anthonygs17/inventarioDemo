@@ -19,8 +19,8 @@ public class MovimientoStock {
     @Column(name = "id_sucursal")
     private Long idSucursal;
 
-    @Column(name = "id_producto")
-    private Long idProducto;
+    @Column(name = "cod_producto")
+    private String codProducto;
 
     @Enumerated(EnumType.STRING)
     private MovimientoTipo tipo;

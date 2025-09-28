@@ -35,7 +35,7 @@ public class InventoryController {
     @Operation(summary = "Consultar stock", description = "Obtiene el stock filtrando por producto y/o distrito.")
     @GetMapping("/stock")
     public ResponseEntity<List<StockResponseDto>> getStock(
-            @RequestParam(required = false) Long producto,
+            @RequestParam(required = false) String producto,
             @RequestParam(required = false) String distrito) {
         List<StockResponseDto> result = service.getStock(Optional.ofNullable(producto), Optional.ofNullable(distrito));
         return ResponseEntity.ok(result);

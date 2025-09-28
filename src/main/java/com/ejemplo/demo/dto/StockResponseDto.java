@@ -8,7 +8,7 @@ import lombok.*;
 @Builder
 public class StockResponseDto {
     private Long idSucursal;
-    private Long idProducto;
+    private String codProducto;
     private Integer stockDisponible;
     private Integer ptoReorden;
     private String distrito;

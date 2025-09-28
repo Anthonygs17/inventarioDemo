@@ -30,7 +30,7 @@ public class InventoryService {
                 .orElseGet(() -> sucursalRepository.findAll());
     }
 
-    public List<StockResponseDto> getStock(Optional<Long> productoOpt, Optional<String> distritoOpt) {
+    public List<StockResponseDto> getStock(Optional<String> productoOpt, Optional<String> distritoOpt) {
         List<Long> sucursalIds = null;
         if (distritoOpt.isPresent()) {
             List<Sucursal> sucursales = sucursalRepository.findByDistritoIgnoreCase(distritoOpt.get());
@@ -40,9 +40,9 @@ public class InventoryService {
 
         List<Stock> stocks;
         if (productoOpt.isPresent() && sucursalIds != null) {
-            stocks = stockRepository.findByIdIdProductoAndIdIdSucursalIn(productoOpt.get(), sucursalIds);
+            stocks = stockRepository.findByIdCodProductoAndIdIdSucursalIn(productoOpt.get(), sucursalIds);
         } else if (productoOpt.isPresent()) {
-            stocks = stockRepository.findByIdIdProducto(productoOpt.get());
+            stocks = stockRepository.findByIdCodProducto(productoOpt.get());
         } else if (sucursalIds != null) {
             stocks = stockRepository.findByIdIdSucursalIn(sucursalIds);
         } else {
@@ -57,7 +57,7 @@ public class InventoryService {
                 .map(s -> {
                     StockResponseDto dto = new StockResponseDto();
                     dto.setIdSucursal(s.getId().getIdSucursal());
-                    dto.setIdProducto(s.getId().getIdProducto());
+                    dto.setCodProducto(s.getId().getCodProducto());
                     dto.setStockDisponible(s.getStockDisponible());
                     dto.setPtoReorden(s.getPtoReorden());
                     dto.setDistrito(sucursalMap.get(s.getId().getIdSucursal()));
@@ -72,8 +72,15 @@ public class InventoryService {
         Sucursal sucursal = sucursalRepository.findById(req.getIdSucursal())
                 .orElseThrow(() -> new ResourceNotFoundException("Sucursal no encontrada: " + req.getIdSucursal()));
 
-        // buscar stock con lock para evitar race conditions
-        Optional<Stock> stockOpt = stockRepository.findForUpdate(req.getIdSucursal(), req.getIdProducto());
+        // validar codProducto en el request
+        String codProducto = req.getCodProducto();
+        if (codProducto == null || codProducto.trim().isEmpty()) {
+            throw new IllegalArgumentException("codProducto es obligatorio");
+        }
+        codProducto = codProducto.trim();
+
+        // buscar stock con lock para evitar race conditions (ahora por codProducto)
+        Optional<Stock> stockOpt = stockRepository.findForUpdate(req.getIdSucursal(), codProducto);
 
         Stock stock;
         if (stockOpt.isPresent()) {
@@ -84,12 +91,13 @@ public class InventoryService {
                 throw new InsufficientStockException("No existe stock para la sucursal/producto indicado");
             }
             stock = Stock.builder()
-                    .id(new StockId(req.getIdSucursal(), req.getIdProducto()))
+                    .id(new StockId(req.getIdSucursal(), codProducto))
                     .stockDisponible(0)
-                    .ptoReorden(10) // valor por defecto (puedes cambiarlo o recibirlo)
+                    .ptoReorden(10) // valor por defecto (ajustable)
                     .build();
         }
 
+        // aplicar movimiento
         if (req.getTipo() == MovimientoTipo.INGRESO) {
             stock.setStockDisponible(stock.getStockDisponible() + req.getCantidad());
         } else { // SALIDA
@@ -101,9 +109,10 @@ public class InventoryService {
 
         stockRepository.save(stock);
 
+        // guardar movimiento usando codProducto
         MovimientoStock mov = MovimientoStock.builder()
                 .idSucursal(req.getIdSucursal())
-                .idProducto(req.getIdProducto())
+                .codProducto(codProducto)
                 .tipo(req.getTipo())
                 .cantidad(req.getCantidad())
                 .fecha(LocalDateTime.now())
@@ -115,7 +124,7 @@ public class InventoryService {
 
         StockResponseDto stockDto = StockResponseDto.builder()
                 .idSucursal(stock.getId().getIdSucursal())
-                .idProducto(stock.getId().getIdProducto())
+                .codProducto(stock.getId().getCodProducto())
                 .stockDisponible(stock.getStockDisponible())
                 .ptoReorden(stock.getPtoReorden())
                 .distrito(sucursal.getDistrito())
@@ -128,4 +137,5 @@ public class InventoryService {
                 .alerta(alerta)
                 .build();
     }
+
 }

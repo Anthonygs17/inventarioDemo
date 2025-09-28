@@ -14,6 +14,6 @@ public class StockId implements Serializable {
     @Column(name = "id_sucursal")
     private Long idSucursal;
 
-    @Column(name = "id_producto")
-    private Long idProducto;
+    @Column(name = "cod_producto")
+    private String codProducto;
 }

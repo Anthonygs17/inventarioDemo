@@ -14,7 +14,7 @@ public class MovimientoRequest {
     private Long idSucursal;
 
     @NotNull
-    private Long idProducto;
+    private String codProducto;
 
     @NotNull
     private MovimientoTipo tipo; // INGRESO o SALIDA
